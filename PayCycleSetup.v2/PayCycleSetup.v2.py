@@ -1,7 +1,7 @@
 # Matt Potter
 # Created May 31 2016 
-# Last Edited July 20 2016
-# Pay Cycle Setup v3.0.1
+# Last Edited August 2 2016
+# Pay Cycle Setup v3.1.0
 
 import tkinter as tk
 from tkinter import ttk
@@ -12,29 +12,32 @@ import base64
 import configparser
 
 class MainApplication: # main window
-    def __init__(self, master, conn): 
+    def __init__(self, master, conn, serv): 
         # region constructor
         self.master = master
         self.frame = ttk.Frame(self.master)
         self.master.wm_title("Pay Cycle Setup")
-        self.master.geometry("%dx%d%+d%+d" % (445, 195, 250, 125))
+        self.master.geometry("%dx%d%+d%+d" % (455, 225, 250, 125))
         self.fields = ('Location', 'Pay Group', 'Tip Share', 'Pay Cycle', 'ADP Store Code')
         MainApplication.connection = conn
         MainApplication.cursor = self.connection.cursor()
         self.SQLCommand = ("")
+        self.serverName = serv
         self.createWidgets()
         self.frame.grid(column=0, row=0)
         #endregion constructor
     
     def createWidgets(self):
         # region Label/Option Menu creation
+        self.serverLab = tk.Label(self.frame, text="Connected to: "+self.serverName)
+        self.serverLab.grid(column=1, columnspan=4, row=0, padx=5, pady=5, sticky='W')
         for field in self.fields:
             if field == 'Location': 
                 # region Location Field
                 self.LocationVariable = tk.StringVar()
                 self.lLab = tk.Label(self.frame, text="Location: ")
                 self.lLab.grid(column=1, columnspan=2, row=1, padx=5, pady=5, sticky='W')
-                self.SQLCommand = ("select [SiteName] from [POSLabor].[dbo].[NBO_Sites]")
+                self.SQLCommand = ("select [SiteName] FROM dbo.NBO_Sites")
                 MainApplication.cursor.execute(self.SQLCommand)
                 self.siteNames = MainApplication.cursor.fetchall()
                 self.siteNames = [str(s).strip('{(\"\',)}') for s in self.siteNames]
@@ -95,7 +98,7 @@ class MainApplication: # main window
         self.editButton.grid(column=7, columnspan=2, row=6, padx=5, pady=5)
         self.submitButton = tk.Button(self.frame, text="Submit", command=self.submit)
         self.submitButton.grid(column=9, columnspan=2, row=6, padx=5, pady=5)
-        self.cancelButton = tk.Button(self.frame, text="Cancel", command=self.master.destroy)
+        self.cancelButton = tk.Button(self.frame, text="Close", command=self.master.destroy)
         self.cancelButton.grid(column=1, columnspan=2, row=6, padx=5, pady=5, sticky='W')
         # endregion Button creation
 
@@ -176,7 +179,7 @@ class MainApplication: # main window
         self.sEntry.delete(0,'end')
 
         # find corresponding site number to name
-        self.SQLCommand = ("select [SiteNumber] from [POSLabor].[dbo].[NBO_Sites] where [SiteName] like \'%"+location+"%\'")
+        self.SQLCommand = ("select [SiteNumber] from dbo.NBO_Sites where [SiteName] like \'%"+location+"%\'")
         MainApplication.cursor.execute(self.SQLCommand)
         siteNumber = MainApplication.cursor.fetchall()
         siteNumber = str(siteNumber).strip("[(\',)]")
@@ -283,7 +286,8 @@ class addWindow:
         # region name validation
         self.flag = False
         for name in MainApplication.payGroups:
-            if str(self.newPayGroupName.get()) in name:
+            print(name+"\n"+self.newPayGroupName.get())
+            if str(self.newPayGroupName.get()) == name:
                 self.mBox = tk.messagebox.showinfo("Error!","Name Already in Use")
                 self.flag = True
         # endregion name validation
@@ -298,7 +302,7 @@ class addWindow:
 
             # region resetting menus
             MainApplication.payGroups.insert(0,self.newPayGroupName)
-            MainApplication.gEntry.set_menu(*MainApplication.payGroups)
+            MainApplication.gEntry['values'] = MainApplication.payGroups
             MainApplication.PayGroupVariable.set(self.newPayGroupName.get())
             # endregion resetting menus
 
@@ -316,7 +320,7 @@ class editWindow:
         self.master = master
         self.frame = tk.Frame(self.master)
         self.master.wm_title("Edit Pay Group")
-        self.master.geometry("%dx%d%+d%+d" % (360, 210, 250, 125))
+        self.master.geometry("%dx%d%+d%+d" % (411, 205, 250, 125))
         self.createWidgets()
         self.frame.grid(column=0, row=0)
         # endregion constructor
@@ -328,24 +332,26 @@ class editWindow:
         self.lab1.grid(column=1, columnspan=5, row=1, sticky='W', padx=5, pady=5)
 
         ## nameList
-        self.nameList = tk.Listbox(self.frame)
+        self.nameList = tk.Listbox(self.frame, width=25)
         self.count = 0
         for name in MainApplication.payGroups:
             name = str(name).strip("(,)")
             self.nameList.insert(self.count, name)
             self.count = self.count + 1
-        self.nameList.grid(row=2, rowspan=5, column=1, padx=5, pady=5)
-
+        self.nameList.grid(row=2, rowspan=6, column=1, padx=(5,0), pady=5)
+        sb = ttk.Scrollbar(self.frame, orient='vertical', command=self.nameList.yview)
+        self.nameList.configure(yscroll=sb.set)
+        sb.grid(row=2, column=2, rowspan=6, sticky="NS", pady=5)
         self.lab2 = tk.Label(self.frame, text="New Pay Group Name: ", anchor='w', width=30)
-        self.lab2.grid(row=3, column=3, columnspan=3)
+        self.lab2.grid(row=3, column=3, columnspan=4, padx=10, pady=5, sticky='S')
         self.NewPayGroupName = tk.StringVar()
         self.entry = tk.Entry(self.frame, textvariable=self.NewPayGroupName, width=30)
-        self.entry.grid(row=4, column=3, columnspan=3)
+        self.entry.grid(row=4, column=3, columnspan=4, padx=10, sticky='NW')
         self.entry.grid_columnconfigure(3, weight=1)
         self.submitButton = tk.Button(self.frame, text="Submit Edit", command=lambda: self.submit(self.nameList.get(tk.ACTIVE), self.NewPayGroupName))
-        self.submitButton.grid(column=5, row=6, padx=5, pady=5, sticky='E') 
+        self.submitButton.grid(column=6, columnspan=2, row=7, padx=5, pady=5, sticky='SE') 
         self.cancelButton = tk.Button(self.frame, text="Cancel", command=self.close_windows)
-        self.cancelButton.grid(column=4, row=6, sticky='E')
+        self.cancelButton.grid(column=4, columnspan=2, row=7, padx=(5,0), pady=5, sticky='SE')
         # endregion Label/Entry creation
 
     def submit(self, OldPayGroupName, NewPayGroupName):
@@ -370,13 +376,15 @@ class editWindow:
             # region resetting menus
             OldPayGroupName = OldPayGroupName.strip('%')
             for index, item in enumerate(MainApplication.payGroups):
-                if (OldPayGroupName in item):
-                    MainApplication.payGroups[index] = str(NewPayGroupName.get())            
-
-            MainApplication.gEntry.set_menu(*MainApplication.payGroups)
-            MainApplication.PayGroupVariable.set(NewPayGroupName.get())
-            self.master.destroy()
+                if (OldPayGroupName in item):                    
+                    MainApplication.payGroups[index] = str(NewPayGroupName.get())               
+                    MainApplication.gEntry.set(MainApplication.payGroups[index])
+            MainApplication.gEntry['values'] = MainApplication.payGroups   
+            MainApplication.PayGroupVariable.set(NewPayGroupName.get())            
             # endregion resetting menus
+
+            self.master.destroy()
+
         # endregion SQL submittion
         
     def close_windows(self):
@@ -412,7 +420,7 @@ def main():
 
     # region open tkinter window
     root = tk.Tk()
-    app = MainApplication(root, connection)
+    app = MainApplication(root, connection, server)
     root.mainloop()
     connection.close()
     # endregion open tkinter window
