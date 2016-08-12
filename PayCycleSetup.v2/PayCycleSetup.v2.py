@@ -1,18 +1,20 @@
 # Matt Potter
-# Created May 31 2016 
-# Last Edited August 2 2016
-# Pay Cycle Setup v3.1.0
+# Created May 31 2016
+# Last Edited August 12 2016
+# Pay Cycle Setup v3.2.0
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter import filedialog
+from tkinter.filedialog import asksaveasfilename
 import pypyodbc
 import re
 import base64
 import configparser
 
 class MainApplication: # main window
-    def __init__(self, master, conn, serv): 
+    def __init__(self, master, conn, serv):
         # region constructor
         self.master = master
         self.frame = ttk.Frame(self.master)
@@ -26,13 +28,13 @@ class MainApplication: # main window
         self.createWidgets()
         self.frame.grid(column=0, row=0)
         #endregion constructor
-    
+
     def createWidgets(self):
         # region Label/Option Menu creation
         self.serverLab = tk.Label(self.frame, text="Connected to: "+self.serverName)
         self.serverLab.grid(column=1, columnspan=4, row=0, padx=5, pady=5, sticky='W')
         for field in self.fields:
-            if field == 'Location': 
+            if field == 'Location':
                 # region Location Field
                 self.LocationVariable = tk.StringVar()
                 self.lLab = tk.Label(self.frame, text="Location: ")
@@ -42,12 +44,12 @@ class MainApplication: # main window
                 self.siteNames = MainApplication.cursor.fetchall()
                 self.siteNames = [str(s).strip('{(\"\',)}') for s in self.siteNames]
                 self.siteNames.sort()
-                MainApplication.lEntry = ttk.Combobox(self.frame, textvariable=self.LocationVariable, value = self.siteNames, state="readonly")      
+                MainApplication.lEntry = ttk.Combobox(self.frame, textvariable=self.LocationVariable, value = self.siteNames, state="readonly")
                 MainApplication.lEntry.grid(column=4, columnspan=6, row=1, padx=5, pady=5, sticky="ew")
                 MainApplication.lEntry.bind('<<ComboboxSelected>>', self.locationSelect)
                 # endregion Location Field
 
-            elif field == 'Pay Group': 
+            elif field == 'Pay Group':
                 # region Pay Group Field
                 MainApplication.PayGroupVariable = tk.StringVar()
                 self.gLab = tk.Label(self.frame, text="Pay Group: ")
@@ -56,7 +58,8 @@ class MainApplication: # main window
                 MainApplication.cursor.execute(self.SQLCommand)
                 MainApplication.payGroups = MainApplication.cursor.fetchall()
                 MainApplication.payGroups = [str(s).strip('{(\"\',)}') for s in MainApplication.payGroups]
-                MainApplication.gEntry = ttk.Combobox(self.frame, textvariable=MainApplication.PayGroupVariable, values=MainApplication.payGroups, state="readonly")
+                MainApplication.gEntry = ttk.Combobox(self.frame, textvariable=MainApplication.PayGroupVariable, values=MainApplication.payGroups,
+                state="readonly")
                 MainApplication.gEntry.grid(column=4, columnspan=6, row=2, padx=5, pady=5, sticky="ew")
                 # endregion Pay Group Field
 
@@ -69,7 +72,7 @@ class MainApplication: # main window
                 self.tCheck.grid(column=4, columnspan=6, row=3, padx=5, pady=5, sticky='W')
                 # endregion Tip Share Field
 
-            elif field == 'Pay Cycle': 
+            elif field == 'Pay Cycle':
                 # region Pay Cycle Field
                 self.cLab = tk.Label(self.frame, text="Pay Cycle: ")
                 self.cLab.grid(column=1, columnspan=2, row=4, padx=5, pady=5, sticky='W')
@@ -79,16 +82,16 @@ class MainApplication: # main window
                 # endregion Pay Cycle Field
 
             elif field == 'ADP Store Code':
-                # region ADP Code Field 
+                # region ADP Code Field
                 self.sLab = tk.Label(self.frame, text="ADP Store Code: ")
                 self.sLab.grid(column=1, columnspan=2, row=5, padx=5, pady=5, sticky='W')
                 self.ADPStoreCodeVariable = tk.StringVar()
                 self.sEntry = tk.Entry(self.frame, textvariable=self.ADPStoreCodeVariable, width=30)
                 self.sEntry.grid(column=4, columnspan=6, row=5, padx=5, pady=5, sticky='W')
                 # endregion ADP Code Field
-        
+
         # endregion Label/Option Menu creation
-        
+
         # region Button creation
         self.tableButton = tk.Button(self.frame, text="View Table", command=self.newTableWindow)
         self.tableButton.grid(column=3, columnspan=2, row=6, padx=5, pady=5)
@@ -107,7 +110,7 @@ class MainApplication: # main window
         self.newWindow = tk.Toplevel(self.master)
         self.app = tableWindow(self.newWindow)
         # endregion opens Table Window
-        
+
     def newAddWindow(self):
         # region opens Add Window
         self.newWindow = tk.Toplevel(self.master)
@@ -120,7 +123,7 @@ class MainApplication: # main window
         self.app = editWindow(self.newWindow)
         # endregion region opens Edit Window
 
-    def submit(self):        
+    def submit(self):
         # region SQLStatement creation
 
         ## Location conversion ##
@@ -131,7 +134,7 @@ class MainApplication: # main window
         MainApplication.cursor.execute(self.SQLCommand)
         self.loc = MainApplication.cursor.fetchone()
         self.loc = str(self.loc).strip("(,)")
-               
+
         ## Pay Group conversion ##
         self.payg = MainApplication.PayGroupVariable.get()
         self.payg = self.payg.strip("(',)")
@@ -139,8 +142,8 @@ class MainApplication: # main window
         MainApplication.cursor.execute(self.SQLCommand)
         self.payg = MainApplication.cursor.fetchone()
         self.payg = str(self.payg).strip("(,)")
-        
-        
+
+
         self.tip = int(self.TipShareVariable.get())
         self.payc = self.PayCycleVariable.get()
         self.adp = self.ADPStoreCodeVariable.get()
@@ -152,7 +155,8 @@ class MainApplication: # main window
         try:
             # region Statement submittion
             self.SQLCommand = ("DECLARE @RT INT "\
-                           "EXECUTE @RT = dbo.pr_NBO_PayCycleSetup_ADD " + self.loc + ", " + self.payg + ", " + str(self.tip) + ", '" + self.adp + "', 0, " + self.payc + " PRINT @RT") # command to add data
+                           "EXECUTE @RT = dbo.pr_NBO_PayCycleSetup_ADD " + self.loc + ", " + self.payg + ", " + str(self.tip) + ", '" +
+                           self.adp + "', 0, " + self.payc + " PRINT @RT") # command to add data
             MainApplication.cursor.execute(self.SQLCommand)
             MainApplication.connection.commit()
             self.mBox = tk.messagebox.showinfo("Success!","Import Complete")
@@ -164,7 +168,7 @@ class MainApplication: # main window
             print("Failed Command: " + self.SQLCommand)
             MainApplication.connection.rollback()
             # endregion submition error
-            
+
         self.master.destroy()
 
     def locationSelect(self, oth):
@@ -186,8 +190,8 @@ class MainApplication: # main window
 
         # take in values based on site number
         self.SQLCommand = ("SELECT * FROM [POSLabor].[dbo].[NBO_PayCycleSetup] where [SiteNumber] like \'%"+siteNumber+"%\'")
-        MainApplication.cursor.execute(self.SQLCommand) 
-                   
+        MainApplication.cursor.execute(self.SQLCommand)
+
         # fill entries with values
         for row in MainApplication.cursor:
             # 1 - PayGroupID: translate ID to name and match with combobox option
@@ -248,9 +252,24 @@ class tableWindow:
             self.table.insert('', 'end', text=str(row[0]), values=(row[1], row[2], row[3], row[4], row[5]))
         sb = ttk.Scrollbar(self.frame, orient='vertical', command=self.table.yview)
         self.table.configure(yscroll=sb.set)
-        sb.grid(row=1, column=9, rowspan=5, sticky="NS", pady=5)  
+        sb.grid(row=1, column=9, rowspan=5, sticky="NS", pady=5)
+        self.exportButton = tk.Button(self.frame, text="Export...", command=self.export)
+        self.exportButton.grid(column=1, columnspan=3, row=6, padx=5, pady=5, sticky='E')
         self.closeButton = tk.Button(self.frame, text="Close", command=self.close_windows)
-        self.closeButton.grid(column=1, columnspan=6, row=6, padx=5, pady=5)
+        self.closeButton.grid(column=4, columnspan=3, row=6, padx=5, pady=5, sticky='W')
+
+    def export(self):
+        # prepare text file
+        ftypes = [('Text file', '.txt'), ('All files', '*')]
+        name = filedialog.asksaveasfilename(filetypes=ftypes, defaultextension=".txt")
+        outFile = open(name, 'w')
+        # prepare sql query
+        self.SQLCommand = ("EXECUTE dbo.pr_NBO_PayCycleReport")
+        MainApplication.cursor.execute(self.SQLCommand)
+        # fill text file
+        for row in MainApplication.cursor:
+            outFile.write(row[0]+"\t"+row[1]+"\t"+str(row[2])+"\t"+row[3]+"\t"+str(row[4])+"\t"+str(row[5])+"\n")
+        outFile.close()
 
     def close_windows(self):
         self.master.destroy()
@@ -267,11 +286,11 @@ class addWindow:
         self.frame.grid(column=0, row=0)
         # endregion constructor
 
-    def createWidgets(self):        
+    def createWidgets(self):
         # region Label/Entry creation
         self.lab = tk.Label(self.frame, text="New Pay Group Name")
         self.lab.grid(column=1, columnspan = 4, row=1, padx=5, pady=5, sticky='W')
-        self.entry = tk.Entry(self.frame, textvariable=self.newPayGroupName, width = 39) 
+        self.entry = tk.Entry(self.frame, textvariable=self.newPayGroupName, width = 39)
         self.entry.grid(column=1, columnspan=4, row=2, padx=5, pady=5, sticky='W')
         # endregion Label/Entry creation
 
@@ -296,9 +315,9 @@ class addWindow:
         if self.flag == False:
             MainApplication.payGroups.insert((len(MainApplication.payGroups) + 1), self.newPayGroupName.get())
             self.SQLCommand = ("INSERT INTO [POSLabor].[dbo].[NBO_PayGroup] (PayrollGroupName, PayGroupID) " \
-                          "VALUES ('" + str(self.newPayGroupName.get()) + "', " + str(len(MainApplication.payGroups)) + " );")                      
+                          "VALUES ('" + str(self.newPayGroupName.get()) + "', " + str(len(MainApplication.payGroups)) + " );")
             MainApplication.cursor.execute(self.SQLCommand)
-            MainApplication.connection.commit()        
+            MainApplication.connection.commit()
 
             # region resetting menus
             MainApplication.payGroups.insert(0,self.newPayGroupName)
@@ -309,11 +328,11 @@ class addWindow:
         # endregion SQL submittion
 
         self.master.destroy()
-        
+
     def close_windows(self):
         self.master.destroy()
 
-    
+
 class editWindow:
     def __init__(self, master):
         # region constructor
@@ -325,9 +344,9 @@ class editWindow:
         self.frame.grid(column=0, row=0)
         # endregion constructor
 
-    def createWidgets(self):        
+    def createWidgets(self):
         # region Label/Entry creation
-        
+
         self.lab1 = tk.Label(self.frame, text="Pay Group to Edit:")
         self.lab1.grid(column=1, columnspan=5, row=1, sticky='W', padx=5, pady=5)
 
@@ -349,7 +368,7 @@ class editWindow:
         self.entry.grid(row=4, column=3, columnspan=4, padx=10, sticky='NW')
         self.entry.grid_columnconfigure(3, weight=1)
         self.submitButton = tk.Button(self.frame, text="Submit Edit", command=lambda: self.submit(self.nameList.get(tk.ACTIVE), self.NewPayGroupName))
-        self.submitButton.grid(column=6, columnspan=2, row=7, padx=5, pady=5, sticky='SE') 
+        self.submitButton.grid(column=6, columnspan=2, row=7, padx=5, pady=5, sticky='SE')
         self.cancelButton = tk.Button(self.frame, text="Cancel", command=self.close_windows)
         self.cancelButton.grid(column=4, columnspan=2, row=7, padx=(5,0), pady=5, sticky='SE')
         # endregion Label/Entry creation
@@ -360,43 +379,43 @@ class editWindow:
         for name in MainApplication.payGroups:
             if str(NewPayGroupName.get()) in name:
                 self.mBox = tk.messagebox.showinfo("Error!","Name Already in Use")
-                self.flag = True 
+                self.flag = True
         # endregion name validation
 
-        # region SQL submittion 
+        # region SQL submittion
         if self.flag == False:
             # use sql statement to UPDATE values to new values
             OldPayGroupName = str(OldPayGroupName).replace("'", "%")
             self.SQLCommand = ("UPDATE [POSLabor].[dbo].[NBO_PayGroup] " \
                           "SET [PayrollGroupName]='" + str(NewPayGroupName.get()) + "' " + \
-                          "WHERE [PayrollGroupName] like '" + OldPayGroupName + "';")          
+                          "WHERE [PayrollGroupName] like '" + OldPayGroupName + "';")
             MainApplication.cursor.execute(self.SQLCommand)
             MainApplication.connection.commit()
 
             # region resetting menus
             OldPayGroupName = OldPayGroupName.strip('%')
             for index, item in enumerate(MainApplication.payGroups):
-                if (OldPayGroupName in item):                    
-                    MainApplication.payGroups[index] = str(NewPayGroupName.get())               
+                if (OldPayGroupName in item):
+                    MainApplication.payGroups[index] = str(NewPayGroupName.get())
                     MainApplication.gEntry.set(MainApplication.payGroups[index])
-            MainApplication.gEntry['values'] = MainApplication.payGroups   
-            MainApplication.PayGroupVariable.set(NewPayGroupName.get())            
+            MainApplication.gEntry['values'] = MainApplication.payGroups
+            MainApplication.PayGroupVariable.set(NewPayGroupName.get())
             # endregion resetting menus
 
             self.master.destroy()
 
         # endregion SQL submittion
-        
+
     def close_windows(self):
         self.master.destroy()
 
 
-def main():   
-    #region login
+def main():
+    # region login
     # opens config file
     Config = configparser.ConfigParser()
     Config.read("config.ini")
-    
+
     # reading base64 login from config.ini
     driver =    Config.get("Login","Driver")
     server =    Config.get("Login","Server")
